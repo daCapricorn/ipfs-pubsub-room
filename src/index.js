@@ -107,6 +107,12 @@ class PubSubRoom extends EventEmitter {
     conn.push(Buffer.from(JSON.stringify(msg)))
   }
 
+  rpcOverMsg (peer, func, args, callback){
+    const message = {
+
+    }
+  }
+
   _start () {
     this._interval = timers.setInterval(
       this._pollPeers.bind(this),
@@ -168,7 +174,7 @@ class PubSubRoom extends EventEmitter {
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
       const m = Object.assign({}, message)
       delete m.to
-      this.emit('message', m)
+      this.emit('rpcDirect', m)
     }
   }
 }
