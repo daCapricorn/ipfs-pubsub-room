@@ -204,7 +204,11 @@ class PubSubRoom extends EventEmitter {
         this.emit('rpcDirect', m) //let the event listener to handle this message and call rpcResponse() to send response back
       }else if(m.verb == 'response'){
         console.log('m.verb is response');
+        console.log('m.guid && this.callbackPool', m.guid && this.callbackPool);
+        console.log('this.callbackPool[guid]', this.callbackPool[guid]);
+        console.log('m.guid && this.callbackPool && this.callbackPool[guid]', m.guid && this.callbackPool && this.callbackPool[guid]);
         if(m.guid && this.callbackPool && this.callbackPool[guid]){
+          console.log('inside if');
           const {timer, callback} = this.callbackPool[guid];
           console.log('timer, callback', timer, callback);
           if(typeof callback == 'function'){
