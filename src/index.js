@@ -109,11 +109,50 @@ class PubSubRoom extends EventEmitter {
     conn.push(Buffer.from(JSON.stringify(msg)))
   }
 
-  rpcOverMsg (peer, func, args, callback){
-    const message = {
-
+  rpcOverMsg (peer, message, callback) {
+    if(typeof callback != 'function'){
+      return this.sendTo(peer, message);
     }
+    let conn = this._connections[peer]
+    if (!conn) {
+      conn = new Connection(peer, this._ipfs, this)
+      conn.on('error', (err) => this.emit('error', err))
+      this._connections[peer] = conn
+
+      conn.once('disconnect', () => {
+        delete this._connections[peer]
+        this._peers = this._peers.filter((p) => p !== peer)
+        this.emit('peer left', peer)
+      })
+    }
+    const guid = this._generateUUID();
+    if(! this.callbackPool) this.callbackPool = {};
+    const timer = setTimeout(() => {
+      callback(null, "timeout")
+    }, 30000);
+    this.callbackPool[guid] = {timer, callback};
+    
+    // We should use the same sequence number generation as js-libp2p-floosub does:
+    // const seqno = Buffer.from(utils.randomSeqno())
+
+    // Until we figure out a good way to bring in the js-libp2p-floosub's randomSeqno
+    // generator, let's use 0 as the sequence number for all private messages
+    // const seqno = Buffer.from([0])
+    const seqno = Buffer.from([0])
+
+    const msg = {
+      to: peer,
+      guid,
+      from: this._ipfs._peerInfo.id.toB58String(),
+      data: Buffer.from(message).toString('hex'),
+      seqno: seqno.toString('hex'),
+      topicIDs: [ this._topic ],
+      topicCIDs: [ this._topic ]
+    }
+
+    conn.push(Buffer.from(JSON.stringify(msg)))
   }
+
 
   _start () {
     this._interval = timers.setInterval(
@@ -174,9 +213,30 @@ class PubSubRoom extends EventEmitter {
 
   _handleDirectMessage (message) {
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
+
       const m = Object.assign({}, message)
-      delete m.to
-      this.emit('rpcDirect', m)
+      if(m.guid && this.callbackPool && this.callbackPool[guid]){
+        this.callbackPool[guid](m.data, null);
+      }else{
+        delete m.to
+        this.emit('rpcDirect', m)
+      }
     }
+  }
+
+  _generateUUID() { // Public Domain/MIT
+    var d = new Date().getTime();//Timestamp
+    var d2 = (performance && performance.now && (performance.now()*1000)) || 0;//Time in microseconds since page-load or 0 if unsupported
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16;//random number between 0 and 16
+        if(d > 0){//Use timestamp until depleted
+            r = (d + r)%16 | 0;
+            d = Math.floor(d/16);
+        } else {//Use microseconds since page-load if supported
+            r = (d2 + r)%16 | 0;
+            d2 = Math.floor(d2/16);
+        }
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
   }
 }
