@@ -205,18 +205,18 @@ class PubSubRoom extends EventEmitter {
       }else if(m.verb == 'response'){
         console.log('m.verb is response');
         console.log('m.guid && this.callbackPool', m.guid && this.callbackPool);
-        console.log('this.callbackPool[guid]', this.callbackPool[guid]);
-        console.log('m.guid && this.callbackPool && this.callbackPool[guid]', m.guid && this.callbackPool && this.callbackPool[guid]);
-        if(m.guid && this.callbackPool && this.callbackPool[guid]){
+        console.log('this.callbackPool[m.guid]', this.callbackPool[m.guid]);
+        console.log('m.guid && this.callbackPool && this.callbackPool[m.guid]', m.guid && this.callbackPool && this.callbackPool[m.guid]);
+        if(m.guid && this.callbackPool && this.callbackPool[m.guid]){
           console.log('inside if');
-          const {timer, callback} = this.callbackPool[guid];
+          const {timer, callback} = this.callbackPool[m.guid];
           console.log('timer, callback', timer, callback);
           if(typeof callback == 'function'){
             console.log('about to run callback with', m.data);
-            clearTimeout(this.callbackPool[guid].timer);
+            clearTimeout(this.callbackPool[m.guid].timer);
             console.log('clear timeout, call the callback now')
             callback(m.data, null);
-            delete this.callbackPool[guid];
+            delete this.callbackPool[m.guid];
             return;
           
           }else{
