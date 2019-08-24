@@ -197,7 +197,6 @@ class PubSubRoom extends EventEmitter {
   }
 
   _handleDirectMessage (message) {
-    console.log('handleDirectmessage,', message);
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
 
       const m = Object.assign({}, message)
@@ -205,9 +204,8 @@ class PubSubRoom extends EventEmitter {
         delete m.to
         this.emit('rpcDirect', m) //let the event listener to handle this message and call rpcResponse() to send response back
       }else if(m.verb == 'response'){
-        console.log("inside pubsubroom handleDirectMessage. verb is response, ", m);
         if(m.guid && this.callbackPool && this.callbackPool[guid]){
-          const {timer, callback} = this.callbackPool && this.callbackPool[guid] && this.callbackPool[guid].callback;
+          const {timer, callback} = this.callbackPool[guid];
           delete this.callbackPool[guid];
           if(typeof callback == 'function'){
             clearTimeout(this.callbackPool[guid].timer);
