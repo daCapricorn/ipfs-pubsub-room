@@ -134,10 +134,10 @@ class PubSubRoom extends EventEmitter {
       delete this.callbackPool[guid];
       if(typeof callback == 'function')
         callback(null, "timeout");
+      delete this.callbackPool[guid];
       
     }, 30000);
     this.callbackPool[guid] = {timer, callback};
-    
     // We should use the same sequence number generation as js-libp2p-floosub does:
     // const seqno = Buffer.from(utils.randomSeqno())
 
@@ -197,26 +197,36 @@ class PubSubRoom extends EventEmitter {
   }
 
   _handleDirectMessage (message) {
-    console.log('handleDirectmessage,', message);
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
-
       const m = Object.assign({}, message)
       if(m.verb == 'request'){
         delete m.to
         this.emit('rpcDirect', m) //let the event listener to handle this message and call rpcResponse() to send response back
       }else if(m.verb == 'response'){
-        console.log("inside pubsubroom handleDirectMessage. verb is response, ", m);
-        if(m.guid && this.callbackPool && this.callbackPool[guid]){
-          const {timer, callback} = this.callbackPool && this.callbackPool[guid] && this.callbackPool[guid].callback;
-          delete this.callbackPool[guid];
+        if(m.guid && this.callbackPool && this.callbackPool[m.guid]){
+          const {timer, callback} = this.callbackPool[m.guid];
           if(typeof callback == 'function'){
-            clearTimeout(this.callbackPool[guid].timer);
-            console.log('clear timeout, call the callback now')
-            return callback(m.data, null);
-           }
+            clearTimeout(this.callbackPool[m.guid].timer);
+            const tryParseJson = (s)=>{
+              try{
+                return JSON.parse(s);
+              }
+              catch(e){
+                return undefined;
+              }
+            }
+            const responseObj = tryParseJson(m.data.toString());
+            callback(responseObj, null);
+            delete this.callbackPool[m.guid];
+          
+            return;
+          
+          }else{
+            //return console.log('calblack is not a function', callback);
+          }
         }else{
           //possible timeout. nothing we can do, just drop this message
-          console.log('possible timeout. nothing we can do, just drop this message');
+          //console.log('possible timeout. nothing we can do, just drop this message');
           return;
         }
       }else{
