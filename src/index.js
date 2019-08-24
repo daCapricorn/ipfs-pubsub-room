@@ -131,14 +131,12 @@ class PubSubRoom extends EventEmitter {
     if(! this.callbackPool) this.callbackPool = {};
     const timer = setTimeout(() => {
       const callback = this.callbackPool && this.callbackPool[guid] && this.callbackPool[guid].callback;
-      delete this.callbackPool[guid];
       if(typeof callback == 'function')
         callback(null, "timeout");
+      delete this.callbackPool[guid];
       
     }, 30000);
     this.callbackPool[guid] = {timer, callback};
-    console.log('inside rpcRequest, this is', this);
-    console.log('inside rpcRequest, this.callbackPool', this.callbackPool);
     // We should use the same sequence number generation as js-libp2p-floosub does:
     // const seqno = Buffer.from(utils.randomSeqno())
 
@@ -199,7 +197,6 @@ class PubSubRoom extends EventEmitter {
 
   _handleDirectMessage (message) {
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
-      console.log('inside handle direct message', message);
       const m = Object.assign({}, message)
       if(m.verb == 'request'){
         console.log('m.verb is request');
@@ -207,18 +204,20 @@ class PubSubRoom extends EventEmitter {
         this.emit('rpcDirect', m) //let the event listener to handle this message and call rpcResponse() to send response back
       }else if(m.verb == 'response'){
         console.log('m.verb is response');
-        console.log('this,', this);
-        console.log('callbackPool', this.callbackPool);
         if(m.guid && this.callbackPool && this.callbackPool[guid]){
           const {timer, callback} = this.callbackPool[guid];
           console.log('timer, callback', timer, callback);
-          delete this.callbackPool[guid];
           if(typeof callback == 'function'){
             console.log('about to run callback with', m.data);
             clearTimeout(this.callbackPool[guid].timer);
             console.log('clear timeout, call the callback now')
-            return callback(m.data, null);
-           }
+            callback(m.data, null);
+            delete this.callbackPool[guid];
+            return;
+          
+          }else{
+            return console.log('calblack is not a function', callback);
+          }
         }else{
           //possible timeout. nothing we can do, just drop this message
           console.log('possible timeout. nothing we can do, just drop this message');
