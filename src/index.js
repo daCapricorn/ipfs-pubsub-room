@@ -134,7 +134,7 @@ class PubSubRoom extends EventEmitter {
       delete this.callbackPool[guid];
       if(typeof callback == 'function')
         callback(null, "timeout");
-      
+      delete this.callbackPool[guid];
       
     }, 30000);
     this.callbackPool[guid] = {timer, callback};
@@ -205,7 +205,6 @@ class PubSubRoom extends EventEmitter {
       }else if(m.verb == 'response'){
         if(m.guid && this.callbackPool && this.callbackPool[m.guid]){
           const {timer, callback} = this.callbackPool[m.guid];
-          delete this.callbackPool[m.guid];
           if(typeof callback == 'function'){
             clearTimeout(this.callbackPool[m.guid].timer);
             const tryParseJson = (s)=>{
@@ -218,7 +217,8 @@ class PubSubRoom extends EventEmitter {
             }
             const responseObj = tryParseJson(m.data.toString());
             callback(responseObj, null);
-            
+            delete this.callbackPool[m.guid];
+          
             return;
           
           }else{
