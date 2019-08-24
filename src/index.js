@@ -42,7 +42,9 @@ class PubSubRoom extends EventEmitter {
 
     this._ipfs.on('stop', this.leave.bind(this))
   }
-
+  getMyPeerId(){
+    return this._ipfs._peerInfo.id.toB58String();
+  }
   getPeers () {
     return this._peers.slice(0)
   }
