@@ -10,6 +10,8 @@ const Connection = require('./connection')
 const encoding = require('./encoding')
 const directConnection = require('./direct-connection-handler')
 const libp2p = require('./libp2p')
+const uuidv1 = require('uuid/v1');
+
 
 const DEFAULT_OPTIONS = {
   pollInterval: 1000
@@ -109,6 +111,122 @@ class PubSubRoom extends EventEmitter {
     conn.push(Buffer.from(JSON.stringify(msg)))
   }
 
+  rpcRequest (peer, message, callback) {
+    if(typeof callback != 'function'){
+      return this.sendTo(peer, message);
+    }
+    let conn = this._connections[peer]
+    if (!conn) {
+      conn = new Connection(peer, this._ipfs, this)
+      conn.on('error', (err) => this.emit('error', err))
+      this._connections[peer] = conn
+
+      conn.once('disconnect', () => {
+        delete this._connections[peer]
+        this._peers = this._peers.filter((p) => p !== peer)
+        this.emit('peer left', peer)
+      })
+    }
+    const guid = this._generateUUID();
+    if(! this.callbackPool) this.callbackPool = {};
+    const timer = setTimeout(() => {
+      const callback = this.callbackPool && this.callbackPool[guid] && this.callbackPool[guid].callback;
+      delete this.callbackPool[guid];
+      if(typeof callback == 'function')
+        callback(null, "timeout");
+      
+    }, 30000);
+    this.callbackPool[guid] = {timer, callback};
+    
+    // We should use the same sequence number generation as js-libp2p-floosub does:
+    // const seqno = Buffer.from(utils.randomSeqno())
+
+    // Until we figure out a good way to bring in the js-libp2p-floosub's randomSeqno
+    // generator, let's use 0 as the sequence number for all private messages
+    // const seqno = Buffer.from([0])
+    const seqno = Buffer.from([0])
+
+    const msg = {
+      to: peer,
+      verb:'request',
+      guid,
+      from: this._ipfs._peerInfo.id.toB58String(),
+      data: Buffer.from(message).toString('hex'),
+      seqno: seqno.toString('hex'),
+      topicIDs: [ this._topic ],
+      topicCIDs: [ this._topic ]
+    }
+
+    conn.push(Buffer.from(JSON.stringify(msg)))
+  }
+
+  rpcResponse (peer, message, guid) {
+    let conn = this._connections[peer]
+    if (!conn) {
+      conn = new Connection(peer, this._ipfs, this)
+      conn.on('error', (err) => this.emit('error', err))
+      this._connections[peer] = conn
+
+      conn.once('disconnect', () => {
+        delete this._connections[peer]
+        this._peers = this._peers.filter((p) => p !== peer)
+        this.emit('peer left', peer)
+      })
+    }
+    
+    // We should use the same sequence number generation as js-libp2p-floosub does:
+    // const seqno = Buffer.from(utils.randomSeqno())
+
+    // Until we figure out a good way to bring in the js-libp2p-floosub's randomSeqno
+    // generator, let's use 0 as the sequence number for all private messages
+    // const seqno = Buffer.from([0])
+    const seqno = Buffer.from([0])
+
+    const msg = {
+      to: peer,
+      verb:'response',
+      guid,
+      from: this._ipfs._peerInfo.id.toB58String(),
+      data: Buffer.from(message).toString('hex'),
+      seqno: seqno.toString('hex'),
+      topicIDs: [ this._topic ],
+      topicCIDs: [ this._topic ]
+    }
+
+    conn.push(Buffer.from(JSON.stringify(msg)))
+  }
+
+  _handleDirectMessage (message) {
+    console.log('handleDirectmessage,', message);
+    if (message.to === this._ipfs._peerInfo.id.toB58String()) {
+
+      const m = Object.assign({}, message)
+      if(m.verb == 'request'){
+        delete m.to
+        this.emit('rpcDirect', m) //let the event listener to handle this message and call rpcResponse() to send response back
+      }else if(m.verb == 'response'){
+        console.log("inside pubsubroom handleDirectMessage. verb is response, ", m);
+        if(m.guid && this.callbackPool && this.callbackPool[guid]){
+          const {timer, callback} = this.callbackPool && this.callbackPool[guid] && this.callbackPool[guid].callback;
+          delete this.callbackPool[guid];
+          if(typeof callback == 'function'){
+            clearTimeout(this.callbackPool[guid].timer);
+            console.log('clear timeout, call the callback now')
+            return callback(m.data, null);
+           }
+        }else{
+          //possible timeout. nothing we can do, just drop this message
+          console.log('possible timeout. nothing we can do, just drop this message');
+          return;
+        }
+      }else{
+        //a standard message. we need to be backward compatible. so just emit a message
+        delete m.to
+        this.emit('message', m)
+      }
+    }
+  }
+
   _start () {
     this._interval = timers.setInterval(
       this._pollPeers.bind(this),
@@ -166,11 +284,9 @@ class PubSubRoom extends EventEmitter {
     this.emit('message', message)
   }
 
-  _handleDirectMessage (message) {
-    if (message.to === this._ipfs._peerInfo.id.toB58String()) {
-      const m = Object.assign({}, message)
-      delete m.to
-      this.emit('message', m)
-    }
+
+
+  _generateUUID() { // Public Domain/MIT
+    return uuidv1();
   }
 }

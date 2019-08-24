@@ -30,7 +30,8 @@
     "hyperdiff": "^2.0.5",
     "lodash.clonedeep": "^4.5.0",
     "pull-pushable": "^2.2.0",
-    "pull-stream": "^3.6.9"
+    "pull-stream": "^3.6.9",
+    "uuid": "^3.3.3"
   },
   "devDependencies": {
     "async": "^2.6.1",
