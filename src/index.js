@@ -197,6 +197,7 @@ class PubSubRoom extends EventEmitter {
   }
 
   _handleDirectMessage (message) {
+    console.log('handleDirectmessage,', message);
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
 
       const m = Object.assign({}, message)
