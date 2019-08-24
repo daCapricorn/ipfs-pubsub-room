@@ -131,9 +131,10 @@ class PubSubRoom extends EventEmitter {
     if(! this.callbackPool) this.callbackPool = {};
     const timer = setTimeout(() => {
       const callback = this.callbackPool && this.callbackPool[guid] && this.callbackPool[guid].callback;
+      delete this.callbackPool[guid];
       if(typeof callback == 'function')
         callback(null, "timeout");
-      delete this.callbackPool[guid];
+      
       
     }, 30000);
     this.callbackPool[guid] = {timer, callback};
@@ -199,32 +200,33 @@ class PubSubRoom extends EventEmitter {
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
       const m = Object.assign({}, message)
       if(m.verb == 'request'){
-        console.log('m.verb is request');
         delete m.to
         this.emit('rpcDirect', m) //let the event listener to handle this message and call rpcResponse() to send response back
       }else if(m.verb == 'response'){
-        console.log('m.verb is response');
-        console.log('m.guid && this.callbackPool', m.guid && this.callbackPool);
-        console.log('this.callbackPool[m.guid]', this.callbackPool[m.guid]);
-        console.log('m.guid && this.callbackPool && this.callbackPool[m.guid]', m.guid && this.callbackPool && this.callbackPool[m.guid]);
         if(m.guid && this.callbackPool && this.callbackPool[m.guid]){
-          console.log('inside if');
           const {timer, callback} = this.callbackPool[m.guid];
-          console.log('timer, callback', timer, callback);
+          delete this.callbackPool[m.guid];
           if(typeof callback == 'function'){
-            console.log('about to run callback with', m.data);
             clearTimeout(this.callbackPool[m.guid].timer);
-            console.log('clear timeout, call the callback now')
-            callback(m.data, null);
-            delete this.callbackPool[m.guid];
+            const tryParseJson = (s)=>{
+              try{
+                return JSON.parse(s);
+              }
+              catch(e){
+                return undefined;
+              }
+            }
+            const responseObj = tryParseJson(m.data.toString());
+            callback(responseObj, null);
+            
             return;
           
           }else{
-            return console.log('calblack is not a function', callback);
+            //return console.log('calblack is not a function', callback);
           }
         }else{
           //possible timeout. nothing we can do, just drop this message
-          console.log('possible timeout. nothing we can do, just drop this message');
+          //console.log('possible timeout. nothing we can do, just drop this message');
           return;
         }
       }else{
