@@ -137,7 +137,8 @@ class PubSubRoom extends EventEmitter {
       
     }, 30000);
     this.callbackPool[guid] = {timer, callback};
-    
+    console.log('inside rpcRequest, this is', this);
+    console.log('inside rpcRequest, this.callbackPool', this.callbackPool);
     // We should use the same sequence number generation as js-libp2p-floosub does:
     // const seqno = Buffer.from(utils.randomSeqno())
 
