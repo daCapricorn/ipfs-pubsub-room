@@ -134,7 +134,8 @@ class PubSubRoom extends EventEmitter {
       delete this.callbackPool[guid];
       if(typeof callback == 'function')
         callback(null, "timeout");
-      delete this.callbackPool[guid];
+      else
+        console.log('callback function not exists in rpcRequest callback');
       
     }, 30000);
     this.callbackPool[guid] = {timer, callback};
@@ -196,6 +197,55 @@ class PubSubRoom extends EventEmitter {
     conn.push(Buffer.from(JSON.stringify(msg)))
   }
 
+  rpcResponseWithNewRequest (peer, message, guid, newCallback) {
+    let conn = this._connections[peer]
+    if (!conn) {
+      conn = new Connection(peer, this._ipfs, this)
+      conn.on('error', (err) => this.emit('error', err))
+      this._connections[peer] = conn
+
+      conn.once('disconnect', () => {
+        delete this._connections[peer]
+        this._peers = this._peers.filter((p) => p !== peer)
+        this.emit('peer left', peer)
+      })
+    }
+    
+    const guidForNewRequest = this._generateUUID();
+    if(! this.callbackPool) this.callbackPool = {};
+    const timer = setTimeout(() => {
+      const callback = this.callbackPool && this.callbackPool[guidForNewRequest] && this.callbackPool[guidForNewRequest].callback;
+      delete this.callbackPool[guidForNewRequest];
+      if(typeof callback == 'function')
+        callback(null, "timeout");
+      
+      
+    }, 30000);
+    this.callbackPool[guidForNewRequest] = {timer, newCallback};
+
+    // We should use the same sequence number generation as js-libp2p-floosub does:
+    // const seqno = Buffer.from(utils.randomSeqno())
+
+    // Until we figure out a good way to bring in the js-libp2p-floosub's randomSeqno
+    // generator, let's use 0 as the sequence number for all private messages
+    // const seqno = Buffer.from([0])
+    const seqno = Buffer.from([0])
+
+    const msg = {
+      to: peer,
+      verb:'responseWithNewRequest',
+      guid,
+      guidForNewRequest,
+      from: this._ipfs._peerInfo.id.toB58String(),
+      data: Buffer.from(message).toString('hex'),
+      seqno: seqno.toString('hex'),
+      topicIDs: [ this._topic ],
+      topicCIDs: [ this._topic ]
+    }
+
+    conn.push(Buffer.from(JSON.stringify(msg)))
+  }
+
   _handleDirectMessage (message) {
     if (message.to === this._ipfs._peerInfo.id.toB58String()) {
       const m = Object.assign({}, message)
@@ -229,7 +279,36 @@ class PubSubRoom extends EventEmitter {
           //console.log('possible timeout. nothing we can do, just drop this message');
           return;
         }
-      }else{
+      }else if(m.verb == 'responseWithNewRequest'){
+        if(m.guid && this.callbackPool && this.callbackPool[m.guid]){
+          const {timer, callback} = this.callbackPool[m.guid];
+          if(typeof callback == 'function'){
+            clearTimeout(this.callbackPool[m.guid].timer);
+            const tryParseJson = (s)=>{
+              try{
+                return JSON.parse(s);
+              }
+              catch(e){
+                return undefined;
+              }
+            }
+            const responseObj = tryParseJson(m.data.toString());
+            delete this.callbackPool[m.guid];
+            callback(responseObj, null, m.guidForNewRequest);
+            delete this.callbackPool[m.guid];
+            
+            return;
+          
+          }else{
+            return console.log('calblack is not a function', callback);
+          }
+        }else{
+          //possible timeout. nothing we can do, just drop this message
+          //console.log('possible timeout. nothing we can do, just drop this message');
+          return;
+        }
+      }
+      else{
         //a standard message. we need to be backward compatible. so just emit a message
         delete m.to
         this.emit('message', m)
