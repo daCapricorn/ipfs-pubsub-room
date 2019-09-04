@@ -161,7 +161,7 @@ class PubSubRoom extends EventEmitter {
     conn.push(Buffer.from(JSON.stringify(msg)))
   }
 
-  rpcResponse (peer, message, guid) {
+  rpcResponse (peer, message, guid, err) {
     let conn = this._connections[peer]
     if (!conn) {
       conn = new Connection(peer, this._ipfs, this)
@@ -193,11 +193,11 @@ class PubSubRoom extends EventEmitter {
       topicIDs: [ this._topic ],
       topicCIDs: [ this._topic ]
     }
-
+    if(err) msg.err = err;
     conn.push(Buffer.from(JSON.stringify(msg)))
   }
 
-  rpcResponseWithNewRequest (peer, message, guid, newCallback) {
+  rpcResponseWithNewRequest (peer, message, guid, newCallback, err) {
     let conn = this._connections[peer]
     if (!conn) {
       conn = new Connection(peer, this._ipfs, this)
@@ -242,7 +242,7 @@ class PubSubRoom extends EventEmitter {
       topicIDs: [ this._topic ],
       topicCIDs: [ this._topic ]
     }
-
+    if(err) msg.err = err;
     conn.push(Buffer.from(JSON.stringify(msg)))
   }
 
@@ -266,7 +266,11 @@ class PubSubRoom extends EventEmitter {
               }
             }
             const responseObj = tryParseJson(m.data.toString());
-            callback(responseObj, null);
+            if(responseObj){
+              callback(responseObj, null);
+            }else{
+              callback(null, m.err);
+            }
             delete this.callbackPool[m.guid];
           
             return;
@@ -293,8 +297,12 @@ class PubSubRoom extends EventEmitter {
               }
             }
             const responseObj = tryParseJson(m.data.toString());
-            delete this.callbackPool[m.guid];
-            callback(responseObj, null, m.guidForNewRequest);
+            if(responseObj){
+              callback(responseObj, null, m.guidForNewRequest);
+            }else{
+              callback(null, m.err, m.guidForNewRequest);
+            }
+            
             delete this.callbackPool[m.guid];
             
             return;
