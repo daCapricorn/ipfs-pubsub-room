@@ -152,7 +152,7 @@ class PubSubRoom extends EventEmitter {
       verb:'request',
       guid,
       from: this._ipfs._peerInfo.id.toB58String(),
-      data: Buffer.from(message).toString('hex'),
+      data: message? Buffer.from(message).toString('hex'): '',
       seqno: seqno.toString('hex'),
       topicIDs: [ this._topic ],
       topicCIDs: [ this._topic ]
@@ -188,7 +188,7 @@ class PubSubRoom extends EventEmitter {
       verb:'response',
       guid,
       from: this._ipfs._peerInfo.id.toB58String(),
-      data: Buffer.from(message).toString('hex'),
+      data: message? Buffer.from(message).toString('hex'): '',
       seqno: seqno.toString('hex'),
       topicIDs: [ this._topic ],
       topicCIDs: [ this._topic ]
@@ -237,7 +237,7 @@ class PubSubRoom extends EventEmitter {
       guid,
       guidForNewRequest,
       from: this._ipfs._peerInfo.id.toB58String(),
-      data: Buffer.from(message).toString('hex'),
+      data: message? Buffer.from(message).toString('hex'): '',
       seqno: seqno.toString('hex'),
       topicIDs: [ this._topic ],
       topicCIDs: [ this._topic ]
