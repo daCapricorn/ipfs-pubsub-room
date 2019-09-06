@@ -266,13 +266,13 @@ class PubSubRoom extends EventEmitter {
               }
             }
             const responseObj = tryParseJson(m.data.toString());
+            delete this.callbackPool[m.guid];
             if(responseObj){
               callback(responseObj, null);
             }else{
               callback(null, m.err);
             }
-            delete this.callbackPool[m.guid];
-          
+            
             return;
           
           }else{
@@ -297,13 +297,13 @@ class PubSubRoom extends EventEmitter {
               }
             }
             const responseObj = tryParseJson(m.data.toString());
+            delete this.callbackPool[m.guid];
             if(responseObj){
               callback(responseObj, null, m.guidForNewRequest);
             }else{
               callback(null, m.err, m.guidForNewRequest);
             }
             
-            delete this.callbackPool[m.guid];
             
             return;
           
