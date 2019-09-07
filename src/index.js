@@ -253,7 +253,17 @@ class PubSubRoom extends EventEmitter {
         delete m.to
         this.emit('rpcDirect', m) //let the event listener to handle this message and call rpcResponse() to send response back
       }else if(m.verb == 'response'){
-        if(m.guid && this.callbackPool && this.callbackPool[m.guid]){
+        if(! m.guid){
+          console.error('rpc repsonse message should always have a guid', m.guid);
+          
+        }
+        else if(! this.callbackPool){
+          console.error('rpc response received, but callbackPool is empty');
+        }
+        else if(! this.callbackPool[m.guid]){
+          console.error('rpc response received, callbackPool exists, but cannot find m.guid', m.guid);
+        }
+        else{
           const {timer, callback} = this.callbackPool[m.guid];
           if(typeof callback == 'function'){
             clearTimeout(this.callbackPool[m.guid].timer);
@@ -276,12 +286,8 @@ class PubSubRoom extends EventEmitter {
             return;
           
           }else{
-            //return console.log('calblack is not a function', callback);
+            return console.log('calblack is not a function', callback);
           }
-        }else{
-          //possible timeout. nothing we can do, just drop this message
-          //console.log('possible timeout. nothing we can do, just drop this message');
-          return;
         }
       }else if(m.verb == 'responseWithNewRequest'){
         if(m.guid && this.callbackPool && this.callbackPool[m.guid]){
