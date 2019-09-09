@@ -278,9 +278,19 @@ class PubSubRoom extends EventEmitter {
             const responseObj = tryParseJson(m.data.toString());
             delete this.callbackPool[m.guid];
             if(responseObj){
-              callback(responseObj, null);
+              try{
+                callback(responseObj, null);
+              }
+              catch(e){
+                console.error('Unhandled exception inside rpc callback result handler. The responseObj and exception are:', responseObj, e);
+              }
             }else{
-              callback(null, m.err);
+              try{
+                callback(null, m.err);
+              }
+              catch(e){
+                console.error('unhandled exception inside rpc callback error handler. The m.err and exception are:',  m.err, e);
+              }
             }
             
             return;
