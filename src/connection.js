@@ -79,7 +79,7 @@ module.exports = class Connection extends EventEmitter {
         callback(err)
         return // early
       }
-
+      console.log('display my peersAddress:', peersAddresses);
       callback(
         null,
         peersAddresses
