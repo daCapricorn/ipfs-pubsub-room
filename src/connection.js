@@ -45,12 +45,14 @@ module.exports = class Connection extends EventEmitter {
       }
 
       if (!peerAddresses.length) {
+        console.log('peerAddresses.length cause disconnect');
         this.emit('disconnect')
         return // early
       }
 
       libp2p(this._ipfs).dialProtocol(peerAddresses[0], PROTOCOL, (err, conn) => {
         if (err) {
+          console.log('libp2p dial cause disconnect')
           this.emit('disconnect')
           return // early
         }
@@ -62,6 +64,7 @@ module.exports = class Connection extends EventEmitter {
           conn,
           pull.onEnd(() => {
             delete this._connection
+            console.log('pull.onEnd cause disconnect')
             this.emit('disconnect')
           })
         )

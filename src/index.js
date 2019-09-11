@@ -85,6 +85,7 @@ class PubSubRoom extends EventEmitter {
       this._connections[peer] = conn
 
       conn.once('disconnect', () => {
+        console.log('sendTo disconnect cause peer left');
         delete this._connections[peer]
         this._peers = this._peers.filter((p) => p !== peer)
         this.emit('peer left', peer)
@@ -122,6 +123,7 @@ class PubSubRoom extends EventEmitter {
       this._connections[peer] = conn
 
       conn.once('disconnect', () => {
+        console.log('rpcRequest disconnect cause peer left');
         delete this._connections[peer]
         this._peers = this._peers.filter((p) => p !== peer)
         this.emit('peer left', peer)
@@ -169,6 +171,7 @@ class PubSubRoom extends EventEmitter {
       this._connections[peer] = conn
 
       conn.once('disconnect', () => {
+        console.log('rpcResponse disconnect cause peer left');
         delete this._connections[peer]
         this._peers = this._peers.filter((p) => p !== peer)
         this.emit('peer left', peer)
@@ -205,6 +208,7 @@ class PubSubRoom extends EventEmitter {
       this._connections[peer] = conn
 
       conn.once('disconnect', () => {
+        console.log('rpcResponseWithNewRequest disconnect cause peer left');
         delete this._connections[peer]
         this._peers = this._peers.filter((p) => p !== peer)
         this.emit('peer left', peer)
